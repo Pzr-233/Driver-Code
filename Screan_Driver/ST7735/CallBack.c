@@ -1,74 +1,52 @@
 #include "gpio.h"
-#include "tim.h"
-#include "Get_Key.h"
+#include "spi.h"
 #include "ST7735.h"
-#include "HX711.h"
-#include "Laser_Tachometer.h"
-// #include "usart.h"
-// #include "stdio.h"
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    
-    if(htim==Key_tim)
+    #if(ST7735_Use_Lvgl==1) 
+    if(htim==&htim9)
     {
-       Key_Scan();
+       lv_tick_inc(1);
     }
-    else if(htim==Laser_Count_TIM)
+    #endif
+    #if(ST7735_Use_Tim==1) 
+     if (htim==ST7735_Tim)
     {
-    Blade_1.Round_Num++;
-    }
-    else if(htim==Laser_CHECK_TIM)
-    {
-    LASER_Get_Velocity();
-    }
-    else if(htim==HX711_TIM)
-    {
-        Scale_1.Init_Buffer[Scale_1.Buffer_Index]=HX711_Get_Count();
-        Scale_1.Buffer_Index++;
-        Scale_1.Buffer_Index%=5;
-        if(Scale_1.HX711_Init_Flag==0)
+        if(HAL_SPI_GetState(ST7735_SPI)==HAL_SPI_STATE_READY) 
         {
-            Scale_1.Sampling_Num++;
-            if(Scale_1.Sampling_Num>=20)
-            {
-            Scale_1.HX711_Init_Flag=1;
-            HX711_Data_Average();
-            }
-          
+        st7735.ST7735_State=1;
         }
     }
-    
+    #endif
 }
 
-
-void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
  {
     if(hspi==ST7735_SPI)
     {   
-       if(ST7735_Mode==Mode_Fill_Color) 
+       if(st7735.ST7735_Mode==Mode_Fill_Color) 
        {
-            if(Y_Now_Flag<Y_All_Flag)
+            if(st7735.Y_Now_Flag<st7735.Y_All_Flag)
             {
-                Y_Now_Flag++;
-                HAL_SPI_Transmit_DMA(ST7735_SPI,X_Buffer,X_Len*2);
+                st7735.Y_Now_Flag++;
+                HAL_SPI_Transmit_DMA(ST7735_SPI,st7735.X_Buffer,st7735.X_Len*2);
             }
             else
             {
-                ST7735_Mode=0;
-                Y_Now_Flag=0;
+                st7735.ST7735_Mode=0;
+                st7735.Y_Now_Flag=0;
                 ST7735_Close_SPI();
             }
        }
-       else if (ST7735_Mode==Mode_Single_Data)
+       else if (st7735.ST7735_Mode==Mode_Single_Data)
        {
-        ST7735_Mode=0;
+        st7735.ST7735_Mode=0;
         ST7735_Close_SPI();
-        // lv_disp_flush_ready(disp_drv_extern);
+        #if(ST7735_Use_Lvgl==1)
+        lv_disp_flush_ready(disp_drv_extern);
+        #endif
        }
     }
  }
 
-// void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
-// {
-
-// }

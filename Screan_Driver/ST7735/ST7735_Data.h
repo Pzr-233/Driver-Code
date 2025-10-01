@@ -30,7 +30,4 @@ extern const uint8_t OLED_F8x16[][16];
 
 /*汉字字模数据声明*/
 extern const ChineseCell_t OLED_CF16x16[];
-
-extern const uint8_t Image_01[];
-
 #endif // !__ST7735_DATA_H

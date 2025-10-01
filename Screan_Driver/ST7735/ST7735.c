@@ -4,81 +4,90 @@
 #include "ST7735_Data.h"
 #include <string.h>
 #include <math.h>
-uint8_t  Data_E0[]={0x04,0x22,0x07,0x0A,0x2E,0x30,0x25,0x2A,0x28,0x26,0x2E,0x3A,0x00,0x01,0x03,0x13};
-uint8_t  Data_E1[]={0x04,0x16,0x06,0x0D,0x2D,0x26,0x23,0x27,0x27,0x25,0x2D,0x3B,0x00,0x01,0x04,0x13};
-uint8_t Y_All_Flag=0;
-uint8_t Y_Now_Flag=0;
-uint16_t X_Len=0;
-__attribute__((aligned(4))) uint8_t X_Buffer[320];
-__attribute__((aligned(4))) uint8_t Chinese_Buffer[512];
-uint16_t Color_Index=0;
-uint8_t ST7735_Mode=0;
+#include "IT_Freq.h"
+#include "stdio.h"
+#include <stdarg.h>
+#include "usart.h"
+ST7735 st7735;
+uint8_t  Data_E0[]={0x04,0x22,0x07,0x0A,0x2E,0x30,0x25,0x2A,0x28,0x26,0x2E,0x3A,0x00,0x01,0x03,0x13};//初始化配置数组
+uint8_t  Data_E1[]={0x04,0x16,0x06,0x0D,0x2D,0x26,0x23,0x27,0x27,0x25,0x2D,0x3B,0x00,0x01,0x04,0x13};//初始化配置数组
 
-
-// uint16_t BlackValue = 0x0000;
-// uint16_t WhiteValue = 0xFFFF;
-// uint8_t* Black = &BlackValue;
-// uint8_t* White = &WhiteValue;
-
-void ST7735_Start_SPI(void)
+/*基础驱动函数，移植时需适配以下函数*/
+/*#################################################################################*/
+void ST7735_Start_SPI(void)//开启SPI通讯
 {
-    HAL_GPIO_WritePin(ST7735_CS_GPIOX,ST7735_CS,GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(ST7735_CS_GPIOX,ST7735_CS,GPIO_PIN_RESET);//拉低ST7735_CS
 }
-void ST7735_Close_SPI(void)
+void ST7735_Close_SPI(void)//停止SPI通讯
 {
-    HAL_GPIO_WritePin(ST7735_CS_GPIOX,ST7735_CS,GPIO_PIN_SET);
+    HAL_GPIO_WritePin(ST7735_CS_GPIOX,ST7735_CS,GPIO_PIN_SET);//拉高ST7735_CS
 }
-void ST7735_Reset(void)
+void ST7735_Data_Falg(void)//置发送数据信号
 {
-    HAL_GPIO_WritePin(ST7735_RES_GPIOX,ST7735_RES,GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);//拉高ST7735_DC
+}
+void ST7735_Command_Falg(void)//置发送命令信号
+{
+	HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_RESET);//拉低ST7735_DC
+}
+void ST7735_Reset(void)//复位屏幕
+{
+    HAL_GPIO_WritePin(ST7735_RES_GPIOX,ST7735_RES,GPIO_PIN_RESET);//拉低RES
     HAL_Delay(1);
-    HAL_GPIO_WritePin(ST7735_RES_GPIOX,ST7735_RES,GPIO_PIN_SET);
+    HAL_GPIO_WritePin(ST7735_RES_GPIOX,ST7735_RES,GPIO_PIN_SET);//拉高RES
     HAL_Delay(120);
 }
-
-void ST7735_Write_Data(uint8_t Data)
+void ST7735_Write_Data(uint8_t Data)//向ST7735写8位数据
 {
     ST7735_Start_SPI();
-    HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
-    HAL_SPI_Transmit(ST7735_SPI,&Data,sizeof(Data),10);
+	ST7735_Data_Falg();
+    HAL_SPI_Transmit(ST7735_SPI,&Data,sizeof(Data),10);//SPI发送数据
     ST7735_Close_SPI();
 }
 
-void ST7735_Write_Data_U16(uint16_t Data)
+void ST7735_Write_Command(uint8_t Command)//向ST7735写命令
+{
+    ST7735_Start_SPI();
+	ST7735_Command_Falg();
+    HAL_SPI_Transmit(ST7735_SPI,&Command,sizeof(Command),10);//SPI发送数据
+}
+void ST7735_Write_Data_DMA(uint8_t Cmd,uint8_t *Data)//以DMA模式向ST7735写数据
+{
+    ST7735_Write_Command(Cmd);
+    ST7735_Start_SPI();
+	ST7735_Data_Falg();
+    st7735.ST7735_Mode=Mode_Single_Data;
+    HAL_SPI_Transmit_DMA(ST7735_SPI,Data,sizeof(Data));//SPI的DMA模式发送数据
+}
+/*#################################################################################*/
+
+void ST7735_Write_Data_U16(uint16_t Data)//向ST7735写16位数据
 {
     ST7735_Write_Data(Data>>8);
     ST7735_Write_Data(Data&0xFF); 
 }
-void ST7735_Write_Command(uint8_t Command)
-{
-    ST7735_Start_SPI();
-    HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_RESET);
-    HAL_SPI_Transmit(ST7735_SPI,&Command,sizeof(Command),10);
-}
-
-void ST7735_Unsleep(void)
+void ST7735_Unsleep(void)//退出休眠
 {
     ST7735_Write_Command(Cmd_Unsleep);
     HAL_Delay(120);
 }
-void ST7735_Sleep(void)
+void ST7735_Sleep(void)//进入休眠
 {
     ST7735_Write_Command(Cmd_Sleep);
 }
 
-void ST7735_Set_RGB(uint8_t Data_RGB)
+void ST7735_Set_RGB(uint8_t Data_RGB)//设置RGB模式
 {
     ST7735_Write_Command(Cmd_RGB);
     ST7735_Write_Data(Data_RGB);
 }
 
-void ST7735_Set_Scan_Dir(uint8_t Scan_Dir)
+void ST7735_Set_Scan_Dir(uint8_t Scan_Dir)//设置屏幕扫描模式
 {
     ST7735_Write_Command(Cmd_Scan_Dir);
     ST7735_Write_Data(Scan_Dir);
 }
-
-void ST7735_Set_View_Window(uint16_t X_Start,uint16_t Y_Start,uint16_t X_End,uint16_t Y_End)
+void ST7735_Set_View_Window(uint16_t X_Start,uint16_t Y_Start,uint16_t X_End,uint16_t Y_End)//设置屏幕矩形范围
 {
 	X_Start+=1;
 	X_End+=1;
@@ -97,29 +106,28 @@ void ST7735_Set_View_Window(uint16_t X_Start,uint16_t Y_Start,uint16_t X_End,uin
     ST7735_Write_Data(Y_End&0xFF);
 
     ST7735_Write_Command(Cmd_Write_Mem);
-
 }
 
-void ST7735_Clear_View(uint16_t RGB_Color)
+void ST7735_Clear_View(uint16_t RGB_Color)//清屏
 {
     ST7735_Fill_Color(0,0,159,79,RGB_Color);
 }
-void ST7735_Fill_Color(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_t Y_End,uint16_t RGB_Color)
+void ST7735_Fill_Color(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_t Y_End,uint16_t RGB_Color)//填充矩形色块
 {
-	X_Len=X_End-X_Start+1;
-    Y_All_Flag=Y_End-Y_Start+1;
-    for (uint16_t i=0;i<X_Len;i++)
+	st7735.X_Len=X_End-X_Start+1;
+    st7735.Y_All_Flag=Y_End-Y_Start+1;
+    for (uint16_t i=0;i<st7735.X_Len;i++)
     {
-        X_Buffer[2*i]=RGB_Color>>8;
-        X_Buffer[2*i+1]=RGB_Color&0xFF;
+        st7735.X_Buffer[2*i]=RGB_Color>>8;
+        st7735.X_Buffer[2*i+1]=RGB_Color&0xFF;
     }
     ST7735_Set_View_Window(X_Start,Y_Start,X_End,Y_End);
     ST7735_Start_SPI();
     HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
-    ST7735_Mode=Mode_Fill_Color;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,X_Buffer,2*X_Len);
+    st7735.ST7735_Mode=Mode_Fill_Color;
+    HAL_SPI_Transmit_DMA(ST7735_SPI,st7735.X_Buffer,2*st7735.X_Len);
 }
-void ST7735_Fill_Color_LVGL(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_t Y_End,uint8_t *RGB_Color)
+void ST7735_Fill_Color_LVGL(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_t Y_End,uint8_t *RGB_Color)//为LVGL提供的填充色块函数
 {
 	uint16_t width=X_End-X_Start+1;
 	uint16_t height = Y_End - Y_Start + 1;
@@ -128,43 +136,37 @@ void ST7735_Fill_Color_LVGL(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_
     ST7735_Set_View_Window(X_Start,Y_Start,X_End,Y_End);
     ST7735_Start_SPI();
     HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
-    ST7735_Mode=Mode_Single_Data;
+    st7735.ST7735_Mode=Mode_Single_Data;
     HAL_SPI_Transmit_DMA(ST7735_SPI,RGB_Color,2*total_pixels);
 }
-void ST7735_Write_Data_DMA(uint8_t Cmd,uint8_t *Data)
+
+void ST7735_ShowImage(uint8_t X_Start,uint8_t Y_Start,uint8_t Width, uint8_t Height,const uint8_t* Image_Data,uint16_t Font_Color,uint16_t Back_Color)//发送图像
 {
-    ST7735_Write_Command(Cmd);
-    ST7735_Start_SPI();
-    HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
-    ST7735_Mode=Mode_Single_Data;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,Data,sizeof(Data));
-}
-void ST7735_ShowImage(uint8_t X_Start,uint8_t Y_Start,uint8_t Width, uint8_t Height,const uint8_t* Image_Data,uint16_t Font_Color,uint16_t Back_Color)
-{
+	uint16_t Color_Index=0;
     for(uint8_t i=0;i<Height*Width/8;i++)
     {
         for(uint8_t j=0;j<8;j++)
         {
             if((Image_Data[i]&(0x01<<j)))
             {
-                Chinese_Buffer[2*Color_Index]=Font_Color>>8;
-                Chinese_Buffer[2*Color_Index+1]=Font_Color&0xFF;
+                st7735.Chinese_Buffer[2*Color_Index]=Font_Color>>8;
+                st7735.Chinese_Buffer[2*Color_Index+1]=Font_Color&0xFF;
                 Color_Index++;
             }
             else
             {
-                Chinese_Buffer[2*Color_Index]=Back_Color>>8;
-                Chinese_Buffer[2*Color_Index+1]=Back_Color&0xFF;
-                Color_Index++;
+                st7735.Chinese_Buffer[2*Color_Index]=Back_Color>>8;
+                st7735.Chinese_Buffer[2*Color_Index+1]=Back_Color&0xFF;
+               Color_Index++;
             }
         }
     }
-    Color_Index=0;
+	Color_Index=0;
     ST7735_Set_View_Window(X_Start,Y_Start,X_Start+Width-1,Y_Start+Height-1);
     ST7735_Start_SPI();
     HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
-    ST7735_Mode=Mode_Single_Data;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,Chinese_Buffer,Width*Height*2);
+    st7735.ST7735_Mode=Mode_Single_Data;
+    HAL_SPI_Transmit_DMA(ST7735_SPI,st7735.Chinese_Buffer,Width*Height*2);
 }
 
 void ST7735_ShowChar(uint8_t X, uint8_t Y, char Char,uint16_t Font_Color,uint16_t Back_Color)
@@ -431,5 +433,29 @@ void ST7735_Init(void)
     ST7735_Set_RGB(Data_RGB565);
     ST7735_Write_Command(Cmd_Start_View); 
 	ST7735_Clear_View(0x0000);
+
+	#if(ST7735_Use_Tim==1)
+	Set_TIM_IT_Freq(APB1,ST7735_Tim,5);
+	HAL_TIM_Base_Start_IT(ST7735_Tim);
+	#endif
+	
+
+}
+void Serial_SendString(char *String)
+{
+	uint8_t i;
+	for (i = 0; String[i] != '\0'; i ++)//遍历字符数组（字符串），遇到字符串结束标志位后停止
+	{
+		HAL_UART_Transmit(&huart4,(uint8_t*)(String+i),1,100);
+	}
 }
 
+void Serial_Printf(char *format, ...)
+{
+	char String[100];				//定义字符数组
+	va_list arg;					//定义可变参数列表数据类型的变量arg
+	va_start(arg, format);			//从format开始，接收参数列表到arg变量
+	vsprintf(String, format, arg);	//使用vsprintf打印格式化字符串和参数列表到字符数组中
+	va_end(arg);					//结束变量arg
+	Serial_SendString(String);		//串口发送字符数组（字符串）
+}
