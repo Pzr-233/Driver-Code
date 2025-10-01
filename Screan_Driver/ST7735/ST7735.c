@@ -9,8 +9,6 @@
 #include <stdarg.h>
 #include "usart.h"
 ST7735 st7735;
-uint8_t  Data_E0[]={0x04,0x22,0x07,0x0A,0x2E,0x30,0x25,0x2A,0x28,0x26,0x2E,0x3A,0x00,0x01,0x03,0x13};//初始化配置数组
-uint8_t  Data_E1[]={0x04,0x16,0x06,0x0D,0x2D,0x26,0x23,0x27,0x27,0x25,0x2D,0x3B,0x00,0x01,0x04,0x13};//初始化配置数组
 
 /*基础驱动函数，移植时需适配以下函数*/
 /*#################################################################################*/
@@ -37,11 +35,24 @@ void ST7735_Reset(void)//复位屏幕
     HAL_GPIO_WritePin(ST7735_RES_GPIOX,ST7735_RES,GPIO_PIN_SET);//拉高RES
     HAL_Delay(120);
 }
+
+void ST7735_SPI_Transmit(uint8_t Data)
+{
+	HAL_SPI_Transmit(ST7735_SPI,&Data,sizeof(Data),10);//SPI发送数据
+}
+
+void ST7735_SPI_DMA_Transmit(uint8_t *pData,uint16_t size)
+{
+	HAL_SPI_Transmit_DMA(ST7735_SPI,pData,size);//SPI发送数据
+}
+
+/*#################################################################################*/
+
 void ST7735_Write_Data(uint8_t Data)//向ST7735写8位数据
 {
     ST7735_Start_SPI();
 	ST7735_Data_Falg();
-    HAL_SPI_Transmit(ST7735_SPI,&Data,sizeof(Data),10);//SPI发送数据
+    ST7735_SPI_Transmit(Data);//SPI发送数据
     ST7735_Close_SPI();
 }
 
@@ -49,17 +60,16 @@ void ST7735_Write_Command(uint8_t Command)//向ST7735写命令
 {
     ST7735_Start_SPI();
 	ST7735_Command_Falg();
-    HAL_SPI_Transmit(ST7735_SPI,&Command,sizeof(Command),10);//SPI发送数据
+    ST7735_SPI_Transmit(Command);//SPI发送数据
 }
-void ST7735_Write_Data_DMA(uint8_t Cmd,uint8_t *Data)//以DMA模式向ST7735写数据
+void ST7735_Write_Data_DMA(uint8_t Cmd,uint8_t *Data,uint16_t size)//以DMA模式向ST7735写数据
 {
     ST7735_Write_Command(Cmd);
     ST7735_Start_SPI();
 	ST7735_Data_Falg();
     st7735.ST7735_Mode=Mode_Single_Data;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,Data,sizeof(Data));//SPI的DMA模式发送数据
+    ST7735_SPI_DMA_Transmit(Data,size);//SPI的DMA模式发送数据
 }
-/*#################################################################################*/
 
 void ST7735_Write_Data_U16(uint16_t Data)//向ST7735写16位数据
 {
@@ -123,9 +133,9 @@ void ST7735_Fill_Color(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_t Y_E
     }
     ST7735_Set_View_Window(X_Start,Y_Start,X_End,Y_End);
     ST7735_Start_SPI();
-    HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
+	ST7735_Data_Falg();
     st7735.ST7735_Mode=Mode_Fill_Color;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,st7735.X_Buffer,2*st7735.X_Len);
+    ST7735_SPI_DMA_Transmit(st7735.X_Buffer,2*st7735.X_Len);
 }
 void ST7735_Fill_Color_LVGL(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_t Y_End,uint8_t *RGB_Color)//为LVGL提供的填充色块函数
 {
@@ -135,9 +145,9 @@ void ST7735_Fill_Color_LVGL(uint8_t X_Start,uint8_t Y_Start,uint8_t X_End,uint8_
 
     ST7735_Set_View_Window(X_Start,Y_Start,X_End,Y_End);
     ST7735_Start_SPI();
-    HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
+	ST7735_Data_Falg();
     st7735.ST7735_Mode=Mode_Single_Data;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,RGB_Color,2*total_pixels);
+    ST7735_SPI_DMA_Transmit(RGB_Color,2*total_pixels);
 }
 
 void ST7735_ShowImage(uint8_t X_Start,uint8_t Y_Start,uint8_t Width, uint8_t Height,const uint8_t* Image_Data,uint16_t Font_Color,uint16_t Back_Color)//发送图像
@@ -164,9 +174,9 @@ void ST7735_ShowImage(uint8_t X_Start,uint8_t Y_Start,uint8_t Width, uint8_t Hei
 	Color_Index=0;
     ST7735_Set_View_Window(X_Start,Y_Start,X_Start+Width-1,Y_Start+Height-1);
     ST7735_Start_SPI();
-    HAL_GPIO_WritePin(ST7735_DC_GPIOX,ST7735_DC,GPIO_PIN_SET);
+	ST7735_Data_Falg();
     st7735.ST7735_Mode=Mode_Single_Data;
-    HAL_SPI_Transmit_DMA(ST7735_SPI,st7735.Chinese_Buffer,Width*Height*2);
+    ST7735_SPI_DMA_Transmit(st7735.Chinese_Buffer,Width*Height*2);
 }
 
 void ST7735_ShowChar(uint8_t X, uint8_t Y, char Char,uint16_t Font_Color,uint16_t Back_Color)
@@ -425,9 +435,6 @@ void ST7735_Init(void)
     ST7735_Write_Command(0xC5);
     ST7735_Write_Data(0x1A);
    
-    ST7735_Write_Data_DMA(0xE0,Data_E0);
-    ST7735_Write_Data_DMA(0xE1,Data_E1);
-
     ST7735_Set_Scan_Dir(Data_Unnormal);
     ST7735_Write_Command(0x21);
     ST7735_Set_RGB(Data_RGB565);
@@ -438,7 +445,7 @@ void ST7735_Init(void)
 	Set_TIM_IT_Freq(APB1,ST7735_Tim,5);
 	HAL_TIM_Base_Start_IT(ST7735_Tim);
 	#endif
-	
+	HAL_Delay(100);
 
 }
 void Serial_SendString(char *String)
