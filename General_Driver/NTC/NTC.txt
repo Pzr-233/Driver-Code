@@ -1,0 +1,14 @@
+uint16_t R_fixed=10000;
+float T_0=298.15;
+float B=3950;
+uint16_t R_t;
+float V_Rt;
+float T;
+
+
+HAL_ADC_Start(&hadc1);
+uint16_t ADC_Data=HAL_ADC_GetValue(&hadc1);
+V_Rt=ADC_Data*3.3/4095;
+R_t=V_Rt*R_fixed/(3.3-V_Rt);
+T=1/(1/T_0+log(R_t/10000.f)/B)-273.15;
+ST7735_ShowFloatNum(0,0,T,4,2,0xFFFF,0x0000);
