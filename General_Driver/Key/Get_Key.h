@@ -48,8 +48,8 @@ typedef struct
 }KeyManager_s;
 
 void Key_Init(void);
-Key_Action_e Read_KeyState(Key_Number_e keyNum);
 void Key_Scan(void);
+Key_Action_e Read_KeyState(Key_Number_e keyNum);
 uint32_t getKeyScanFreq(void);
 void setKeyScanFreq(uint32_t freq); // 设置按键扫描频率，单位Hz
 

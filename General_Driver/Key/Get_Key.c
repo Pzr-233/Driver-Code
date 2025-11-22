@@ -1,14 +1,8 @@
 #include "gpio.h"
 #include "tim.h"
 #include "Get_Key.h"
-#include "IT_Freq.h"
-uint8_t Key_State;
-uint8_t Key_Count      = 0;
-uint8_t Key_slect      = 0;
-uint16_t test_falg     = 0;
-uint32_t Key_Scan_Freq = 0;
 
-KeyManager_s KeyManager = {
+KeyManager_s KeyManager = {// 初始化按键管理结构体
     .Key = {
         {GPIOC, GPIO_PIN_1, Key_1, Key_Released, Key_None, 0},
         {GPIOC, GPIO_PIN_2, Key_2, Key_Released, Key_None, 0},
@@ -28,9 +22,9 @@ uint32_t getKeyScanFreq(void)
 
 void Key_Init(void)
 {
-    setKeyScanFreq(50);
-    KeyManager.keyDuobleClickTime = getKeyScanFreq() / 10;
-    KeyManager.keyLongPressTime   = getKeyScanFreq() / 2;
+    setKeyScanFreq(50);// 默认按键扫描频率50Hz
+    KeyManager.keyDuobleClickTime = getKeyScanFreq() / 10;// 双击时间间隔为100ms
+    KeyManager.keyLongPressTime   = getKeyScanFreq() / 2;// 长按时间为500ms
 }
 
 void Key_Scan(void)
@@ -82,7 +76,7 @@ Key_Action_e Read_KeyState(Key_Number_e keyNum)
     Key_Action_e action = 0;
     switch (KeyManager.Key[keyNum].Action) {
         case Key_Long_Pres:
-            action = Key_Long_Pres;
+            action = Key_Long_Pres;         // 读取后不清除动作，长按需要持续读取
             break;
         case Key_Double_Click:
             action                        = Key_Double_Click;
@@ -97,120 +91,3 @@ Key_Action_e Read_KeyState(Key_Number_e keyNum)
     }
     return action;
 }
-
-//     if(Key_State==Key1_Pres)
-//     {
-//         Key_State=0;
-//         return Key1_Pres;
-//     }
-//     else if (Key_State==Key2_Pres)
-//     {
-//         Key_State=0;
-//         return Key2_Pres;
-//     }
-//      else if (Key_State==Key3_Pres)
-//     {
-//         Key_State=0;
-//         return Key3_Pres;
-//     }
-//      else if (Key_State==Key1_Long_Pres)
-//     {
-//         Key_State=0;
-//         return Key1_Long_Pres;
-//     }
-//      else if (Key_State==Key2_Long_Pres)
-//     {
-//         Key_State=0;
-//         return Key2_Long_Pres;
-//     }
-//     else if (Key_State==Key3_Long_Pres)
-//     {
-//         Key_State=0;
-//         return Key3_Long_Pres;
-//     }
-//     else
-//     {
-//         return 0;
-//     }
-
-//     if(Key_slect==0)
-//     {
-//         if(HAL_GPIO_ReadPin(Key_GPIO_Port,Key_1)==GPIO_PIN_RESET)
-//         {
-//             Key_slect=1;
-//         }
-//         else if(HAL_GPIO_ReadPin(Key_GPIO_Port,Key_2)==GPIO_PIN_RESET)
-//         {
-//             Key_slect=2;
-//         }
-//         else if(HAL_GPIO_ReadPin(Key_GPIO_Port,Key_3)==GPIO_PIN_RESET)
-//         {
-//             Key_slect=3;
-//         }
-//     }
-//     else if (Key_slect==1)
-//     {
-//            if(HAL_GPIO_ReadPin(Key_GPIO_Port,Key_1)==GPIO_PIN_RESET)
-//         {
-//             Key_Count++;
-//         }
-//         else if (HAL_GPIO_ReadPin(Key_GPIO_Port,Key_1)==GPIO_PIN_SET)
-//         {
-//             if(Key_Count<5)
-//             {
-//                 Key_State=Key1_Pres;
-//                 Key_Count=0;
-//                 Key_slect=0;
-//             }
-//             else if(Key_Count>=5)
-//             {
-//                 Key_State=Key1_Long_Pres;
-//                 Key_Count=0;
-//                 Key_slect=0;
-//             }
-//         }
-//     }
-//      else if (Key_slect==2)
-//     {
-//       if(HAL_GPIO_ReadPin(Key_GPIO_Port,Key_2)==GPIO_PIN_RESET)
-//         {
-//             Key_Count++;
-//         }
-//         else if (HAL_GPIO_ReadPin(Key_GPIO_Port,Key_2)==GPIO_PIN_SET)
-//         {
-//             if(Key_Count<5)
-//             {
-//                 Key_State=Key2_Pres;
-//                 Key_Count=0;
-//                 Key_slect=0;
-//             }
-//             else if(Key_Count>=5)
-//             {
-//                 Key_State=Key2_Long_Pres;
-//                 Key_Count=0;
-//                 Key_slect=0;
-//             }
-//         }
-//     }
-//     else if (Key_slect==3)
-//     {
-//        if(HAL_GPIO_ReadPin(Key_GPIO_Port,Key_3)==GPIO_PIN_RESET)
-//         {
-//             Key_Count++;
-//         }
-//         else if (HAL_GPIO_ReadPin(Key_GPIO_Port,Key_3)==GPIO_PIN_SET)
-//         {
-//             if(Key_Count<5)
-//             {
-//                 Key_State=Key3_Pres;
-//                 Key_Count=0;
-//                 Key_slect=0;
-//             }
-//              else if(Key_Count>=5)
-//             {
-//                 Key_State=Key3_Long_Pres;
-//                 Key_Count=0;
-//                 Key_slect=0;
-//             }
-//         }
-//      }
