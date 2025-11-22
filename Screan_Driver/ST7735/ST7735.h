@@ -6,11 +6,16 @@
 
 #define ST7735_Use_Tim  0 // 是否使用定时器定时执行显示任务
 #define ST7735_Use_Lvgl 0 // 是否使用LVGL
-
+#define ST7735_Use_Uart 0 // 是否使用uart
 #if (ST7735_Use_Tim == 1)
 #define ST7735_Tim &htim12
 #include "tim.h"
-#endif 
+#include "IT_Freq.h"
+#endif
+
+#if (ST7735_Use_Uart == 1)
+#include "uart.h"
+#endif
 
 /*##########################################*/
 // ST7735引脚宏定义

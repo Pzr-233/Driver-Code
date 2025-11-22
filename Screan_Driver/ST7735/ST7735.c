@@ -4,10 +4,8 @@
 #include "ST7735_Data.h"
 #include <string.h>
 #include <math.h>
-#include "IT_Freq.h"
 #include "stdio.h"
 #include <stdarg.h>
-#include "usart.h"
 ST7735 st7735;
 
 /*基础驱动函数，移植时需适配以下函数*/
@@ -448,6 +446,7 @@ void ST7735_Init(void)
 	HAL_Delay(100);
 
 }
+#if (ST7735_Use_Uart == 1)
 void Serial_SendString(char *String)
 {
 	uint8_t i;
@@ -466,3 +465,5 @@ void Serial_Printf(char *format, ...)
 	va_end(arg);					//结束变量arg
 	Serial_SendString(String);		//串口发送字符数组（字符串）
 }
+#endif 
+
