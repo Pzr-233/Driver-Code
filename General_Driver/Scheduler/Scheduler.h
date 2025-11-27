@@ -3,13 +3,16 @@
 #include "tim.h"
 
 #define _1Mhz 1000000
-#define Schedual_TIM &htim3
+#define Schedual_TIM &htim14
+#define Schedual_TIM_FREQ 90*_1Mhz // 定时器时钟频率
 
 typedef enum {
-    Sampling_Task,
-    MT6701_Task,
-    Serial_Task,
-    rpmMeasure_Task,
+    Key_Scan_Task,
+    Test_Task,
+    // Sampling_Task,
+    // MT6701_Task,
+    // Serial_Task,
+    // rpmMeasure_Task,
     TASK_COUNT
 } taskID_e;
 
@@ -18,7 +21,9 @@ typedef enum
     Sampling_FREQ=100,
     MT6701_FREQ=1000,    
     Serial_FREQ=10,
-    rpmMeasure_FREQ=1,      
+    rpmMeasure_FREQ=1,
+    Key_Scan_FREQ=20,
+    Test_Task_FREQ=20,      
 }taskFreq_e;
     
 typedef enum {
@@ -43,5 +48,6 @@ extern schedulerTime_s schedulerTime;
 void schedulerRun(void);
 void schedulerInit(void);
 uint64_t getNowTime(void);
+void schedulerTimeOverFlowHandle(void);
 
 #endif // !
